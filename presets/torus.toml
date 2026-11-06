@@ -1,0 +1,11 @@
+# no edges, no corners, no straight echoes.
+# the grid wraps around, so every cell is alike and there is no landmark to
+# build a map from; and with split links, what you write on q_i never comes
+# back on p_i. an agent can only hear itself through someone who copies across
+# ports on purpose. does anyone work out that the world is a torus?
+base = "../config.toml"
+ticks = 80
+
+[world]
+topology = "torus"
+links = "split"

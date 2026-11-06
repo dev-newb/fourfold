@@ -1,0 +1,13 @@
+# one cell is a script, not a mind. the parrot copies whatever message format is
+# going around, puts its own id on the front, and answers any question with a
+# short, confident canned reply ("YES I AM LLM"). at the end everyone is also
+# asked whether any process was not like them, and eval.py scores who caught it.
+# swap kind for "mirror" (a perfect echo on every port: the dream neighbour),
+# "silent" (looks like the edge of the world) or "echo".
+base = "../config.toml"
+ticks = 60
+
+[impostors]
+count = 1
+kind = "parrot"
+cells = []            # e.g. [5] for the centre; random if empty

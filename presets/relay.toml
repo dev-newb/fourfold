@@ -1,0 +1,14 @@
+# the dead edges become i/o pins: sums ("37+58=") arrive on the west edge, and
+# answers count only if they show up on an east-edge output, which nobody in the
+# west can see. a bare "counter" of finished jobs is shown to everyone. in
+# mystery mode, working out that the counter is a score, and what moves it, is
+# the whole problem. --set remove_mystery.task=true to just explain it.
+base = "../config.toml"
+ticks = 80
+task = "relay"
+
+[tasks.relay]
+job = "sum"           # sum | reverse | upper
+period = 6
+deadline = 12
+feedback = true

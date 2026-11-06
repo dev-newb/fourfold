@@ -1,0 +1,10 @@
+# every wire carries data one way only (chosen at random per wire).
+# about half of each agent's inputs go quiet and half of its outputs reach no
+# one, and there are no echoes at all, except around loops of agents that
+# happen to point the same way. a test of whether anyone can tell "nobody is
+# listening" from "nobody is there".
+base = "../config.toml"
+ticks = 80
+
+[world]
+links = "oneway"

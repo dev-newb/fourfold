@@ -1,0 +1,11 @@
+# every changed output bit costs energy. agents start with 40 and regain 1 per
+# tick, so a full rewrite of all four 128-bit ports (~256 bit flips) is
+# unaffordable. prose gets expensive; watch for compression, abbreviation, and
+# agents going quiet to save up.
+base = "../config.toml"
+ticks = 80
+
+[cost]
+per_bit = 0.05
+energy = 40.0
+regen = 1.0

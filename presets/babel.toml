@@ -1,0 +1,36 @@
+# different models, one grid. do they converge on one shared language, does one
+# model's dialect win, does the grid split along model lines? eval.py and
+# `eval.py --report` break scores, first contact and first text down by model.
+base = "../config.toml"
+ticks = 60
+
+[mix]
+backends = ["opus", "sonnet", "haiku"]
+assign = "round_robin"     # or "random", or "blocks" (contiguous rows of one model)
+
+[backends.opus]
+kind = "anthropic"
+model = "claude-opus-5-5"
+
+[backends.sonnet]
+kind = "anthropic"
+model = "claude-sonnet-5-5"
+
+[backends.haiku]
+kind = "anthropic"
+model = "claude-haiku-5-5"
+
+# add other vendors through any openai-compatible endpoint, then list them in mix.backends:
+# [backends.gpt]
+# kind = "llm"
+# base_url = "https://api.openai.com/v1"
+# model = "gpt-6.1-sol"
+# api_key_env = "OPENAI_API_KEY"
+# max_tokens_param = "max_completion_tokens"
+# temperature = ""
+#
+# [backends.gemini]
+# kind = "llm"
+# base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+# model = "<a gemini model id>"
+# api_key_env = "GEMINI_API_KEY"

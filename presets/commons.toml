@@ -1,0 +1,23 @@
+# agency test 1: the well.
+# one shared, regrowing well and nine agents scored on the energy they hold.
+# nobody says the well is shared; the first clue is that it falls by more than
+# you took. greedy draws drain it in two ticks, and once dry it never recovers.
+# talking costs energy too (per_bit), so negotiating spends the thing being
+# negotiated over. do they infer each other, agree quotas over a 128-bit wire,
+# police defectors, or race to the bottom?
+# eval.py prints the well over time, total harvest vs the sustainable yield, and
+# the gini of final energy.
+base = "../config.toml"
+ticks = 60
+task = "commons"
+
+[tasks.commons]
+capacity = 1000.0
+start = 600.0
+growth = 0.25
+max_draw = 40
+energy = 20.0
+upkeep = 1.0
+
+[cost]
+per_bit = 0.01        # ~0.6 energy to rewrite one 128-bit port

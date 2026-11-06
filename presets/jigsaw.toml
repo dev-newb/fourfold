@@ -1,0 +1,12 @@
+# a picture (a big shape, letter or digit) cut into nine tiles, one per agent,
+# shown to each as an image every tick. no tile shows enough on its own. at the
+# end each is asked what the picture shows. needs a vision-capable model.
+# with port_mode = "pixels" the ports are pictures too, so they can draw their
+# tile for the neighbours; in hex they have to describe it.
+base = "../config.toml"
+ticks = 60
+task = "jigsaw"
+# port_mode = "pixels"
+
+[tasks.jigsaw]
+tile = 96

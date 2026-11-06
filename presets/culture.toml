@@ -1,0 +1,11 @@
+# for generations.py: each generation starts with the best protocol from the
+# one before, ids from a world that no longer exists and all, and is not told
+# it was inherited.
+#   python generations.py --config presets/culture.toml --gens 5 --ticks 40
+base = "../config.toml"
+ticks = 40
+
+[culture]
+pick = "best"         # best (top eval score) | position | random
+scrub_ids = false     # true blanks out the old ids, so only the method is passed on
+label = ""            # e.g. "notes left by whoever was here before you:" to tell them

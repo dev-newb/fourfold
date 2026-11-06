@@ -1,0 +1,20 @@
+# the same sudoku with the mystery removed: they know it's a sudoku, that the
+# others hold the other boxes, where everyone sits, which port faces which side,
+# and they can write ascii text directly. the productive version, and the
+# baseline for how much the mystery costs.
+base = "../config.toml"
+ticks = 80
+task = "sudoku"
+
+[tasks.sudoku]
+givens = 30
+
+[remove_mystery]
+peers = true
+grid = true
+position = true
+sides = true
+task = true
+text = true
+score = true
+ticks = true

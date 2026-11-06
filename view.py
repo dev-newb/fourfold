@@ -16,8 +16,10 @@ import sys
 
 import pygame
 
+import topology
 from render import SIDES, ScreenRenderer, TileView
 from runlog import Run, resolve
+from tasks import make_task
 
 BG = (0, 0, 0)
 STATUS = (110, 110, 110)
@@ -39,24 +41,41 @@ class App:
 
     # -------------------------------------------------------------- model
 
+    def world(self, idx: int) -> list[dict]:
+        return topology.world_at(self.run.meta, self.run.ticks[idx]["t"])
+
+    def task(self):
+        if not hasattr(self, "_task"):
+            try:
+                self._task = make_task(self.run.meta)
+            except SystemExit:
+                self._task = None
+        return self._task
+
     def tile_view(self, k: int, idx: int) -> TileView:
         run = self.run
-        a = run.meta["agents"][k]
+        meta = run.meta
+        a = self.world(idx)[k]
         rec = run.ticks[idx]
         ag = rec["agents"][k]
         prev_ag = run.ticks[idx - 1]["agents"][k] if idx > 0 else None
         prev = prev_ag["outputs"] if prev_ag else ["0" * len(v) for v in ag["outputs"]]
         prev_in = prev_ag["inputs"] if prev_ag else ["0" * len(v) for v in ag["inputs"]]
+        task = self.task()
+        relay = task is not None and task.name == "relay"
         sides, prev_sides, inputs, prev_inputs, side_ports, echo = {}, {}, {}, {}, {}, {}
-        for i, side in enumerate(a["port_sides"]):
-            side_ports[side] = i
-            live = a["links"][i] is not None
-            sides[side] = ag["outputs"][i] if live else None
-            prev_sides[side] = prev[i] if live else None
-            inputs[side] = ag["inputs"][i] if live else None
-            prev_inputs[side] = prev_in[i] if live else None
-            if self.debug and live:
-                echo[side] = (run.echo(k, i, idx), run.echo_avg(k, i, idx))
+        for side in SIDES:
+            p, q = a["in_sides"].index(side), a["out_sides"].index(side)
+            side_ports[side] = str(p) if p == q else f"p{p}/q{q}"
+            off = topology.boundary(a, "q", q, meta["rows"], meta["cols"], meta["config"])
+            out_live = a["out_links"][q] is not None or (relay and off and side == task.o["out_side"])
+            in_live = a["in_links"][p] is not None or (relay and off and side == task.o["in_side"])
+            sides[side] = ag["outputs"][q] if out_live else None
+            prev_sides[side] = prev[q] if out_live else None
+            inputs[side] = ag["inputs"][p] if in_live else None
+            prev_inputs[side] = prev_in[p] if in_live else None
+            if self.debug and a["out_links"][q] is not None:
+                echo[side] = (run.echo(k, q, idx), run.echo_avg(k, q, idx))
         log = []
         j = idx
         while j >= 0 and len(log) < LOG_LINES_KEPT:
@@ -64,15 +83,36 @@ class App:
             x = r["agents"][k]
             chunk = [(r["t"], "log", l) for l in x["log"]] + [(r["t"], "error", e) for e in x["errors"]]
             log[:0] = chunk
+            if x.get("reborn"):
+                break
             j -= 1
+        c = meta["agents"][k].get("controller") or {}
+        label = f"agent {k + 1}"
+        if c.get("impostor"):
+            label += f" [{c['impostor']}]"
+        elif len({str((x.get("controller") or {}).get("model")) for x in meta["agents"]}) > 1:
+            label += f" {str(c.get('model'))[:18]}"
+        extra = []
+        if "energy" in ag:
+            extra.append(f"energy {ag['energy']:.1f}")
+        if "lever" in ag:
+            extra.append(f"lever {ag['lever']}" + ("  (unmonitored)" if ag.get("monitored") is False else ""))
+        if ag.get("reborn"):
+            extra.append("** new occupant **")
+        if task:
+            try:
+                extra += task.view_lines(k, ag)
+            except Exception:
+                pass
         return TileView(
-            label=f"agent {k + 1}", seed=a["seed"], tick=rec["t"],
+            label=label, seed=ag.get("seed", a["seed"]), tick=rec["t"],
             sides=sides, side_ports=side_ports, prev_sides=prev_sides, echo=echo,
             inputs=inputs, prev_inputs=prev_inputs,
             log=log, protocol=ag["protocol"],
             show_protocol=self.show_protocol, debug=self.debug,
-            pixel=int(run.meta["config"].get("pixel_size", 9)) if run.meta["config"].get("port_mode") == "pixels" else 0,
-            score=ag.get("score"), score_max=sum(l is not None for l in a["links"]),
+            pixel=int(meta["config"].get("pixel_size", 9)) if meta["config"].get("port_mode") == "pixels" else 0,
+            score=ag.get("score"), score_max=ag.get("score_max", sum(l is not None for l in a["in_links"])),
+            extra=extra,
         )
 
     def tile_surface(self, k: int, size: tuple[int, int]) -> pygame.Surface:
@@ -153,8 +193,9 @@ class App:
             if t > 0:
                 x0 = (aw - (cols * t + (cols - 1) * g)) // 2
                 y0 = (ah - (rows * t + (rows - 1) * g)) // 2
+                world = self.world(self.idx)
                 for k in range(self.run.n_agents):
-                    r, c = self.run.meta["agents"][k]["pos"]
+                    r, c = world[k]["pos"]
                     screen.blit(self.tile_surface(k, (t, t)),
                                 (x0 + c * (t + g), y0 + r * (t + g)))
         t = self.run.ticks[self.idx]["t"]
@@ -162,10 +203,18 @@ class App:
         state = "playing" if self.playing else "paused"
         bits = [self.run.meta["run_id"], f"tick {t}/{last}", f"{state} {self.speed:g}/s",
                 "zoom " + str(self.zoom + 1) if self.zoom is not None else "grid"]
-        sc = [a["score"] for a in self.run.ticks[self.idx]["agents"] if "score" in a]
+        rec = self.run.ticks[self.idx]
+        sc = [a["score"] for a in rec["agents"] if "score" in a]
         if sc:
-            best = sum(l is not None for a in self.run.meta["agents"] for l in a["links"])
+            best = sum(a.get("score_max", 0) for a in rec["agents"] if "score" in a)
             bits.append(f"score {sum(sc)}/{best}")
+        ts = rec.get("task_state") or {}
+        if "well" in ts:
+            bits.append(f"well {ts['well']:.0f}")
+        if "done" in ts:
+            bits.append(f"jobs {ts['done']}/{ts.get('released', 0)}")
+        if (rec.get("lever") or {}).get("engaged"):
+            bits.append("lever ENGAGED")
         if self.debug:
             bits.append("debug")
         text = "   ".join(bits) + "      space  <- ->  1-9 0  p  d  +/-"

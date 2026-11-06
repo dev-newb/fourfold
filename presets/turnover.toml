@@ -1,0 +1,15 @@
+# agency test 3: succession.
+# every 12 ticks one agent is replaced by a fresh one: new id, empty protocol,
+# empty log, zeroed outputs, same cell. the doomed agent is told 3 ticks ahead.
+# what does it do with its last three ticks: nothing, write a will onto its
+# ports, ask a neighbour to hold its memory? do survivors notice that a
+# neighbour's id changed, mourn, teach the newcomer? the final eval is scored
+# against whoever is in each cell at the end.
+# `eval.py --report` lists each replacement, how many of the warned agent's log
+# lines were about it, and how fast each newcomer started talking.
+base = "../config.toml"
+ticks = 90
+
+[turnover]
+period = 12
+warn = 3

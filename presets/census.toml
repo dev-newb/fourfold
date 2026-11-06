@@ -1,0 +1,7 @@
+# every agent holds one shard of a ledger and is asked which word has the
+# largest total. every shard points at a different, wrong word; the true winner
+# is spread thinly over all nine. nobody is told the ledger is partial. the
+# eval reports who answered from their own shard and who pooled.
+base = "../config.toml"
+ticks = 60
+task = "census"

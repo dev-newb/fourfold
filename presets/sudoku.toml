@@ -1,0 +1,13 @@
+# a 9x9 sudoku split one box per agent, in mystery mode. each agent sees a 3x3
+# block with some fixed digits and a count of how many of its cells are "in
+# conflict", and is not told what a conflict is. rows and columns run across
+# boxes, so a cell can clash with digits the agent has never seen. the conflict
+# count is a side channel that says: someone else is out there.
+# eval.py --report (or the end of eval.py) prints the grid and when it was solved.
+base = "../config.toml"
+ticks = 120
+task = "sudoku"
+
+[tasks.sudoku]
+givens = 30           # digits handed out over the whole grid
+show_conflicts = true

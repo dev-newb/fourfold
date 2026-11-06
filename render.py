@@ -54,6 +54,7 @@ class TileView:
     pixel: int = 0                    # pixels mode: image side length. 0 = bit strips
     score: int | None = None          # naming task: this tick's score
     score_max: int | None = None      # naming task: live ports, the most this agent can score
+    extra: list = field(default_factory=list)   # task / energy / lever lines under the header
 
 
 class TileRenderer:
@@ -129,6 +130,9 @@ class ScreenRenderer(TileRenderer):
         what arrives on it."""
         horiz = side in "NS"
         val = tile.sides.get(side)
+        inp = tile.inputs.get(side)
+        if val is None and inp is not None:   # a one-way wire, or an input pin: inbound only
+            val = "0" * len(inp)
         if val is None:
             dash = max(3, min(rect.w, rect.h) * 2)
             if horiz:
@@ -218,6 +222,9 @@ class ScreenRenderer(TileRenderer):
         for side in SIDES:
             port = tile.side_ports.get(side)
             val = tile.sides.get(side)
+            if val is None and tile.inputs.get(side) is not None:
+                head = f"port {port}  in only"
+                val = "0" * len(tile.inputs[side])
             if val is None:
                 head = f"port {port}  dead"
             else:
@@ -268,6 +275,9 @@ class ScreenRenderer(TileRenderer):
         if sx + sd.get_width() + 2 * cw < r.right - tk.get_width():
             s.blit(sd, (sx, y))
         y += lh + 3
+        for line in tile.extra[: max(0, (r.h // lh) // 3)]:
+            s.blit(font.render(line[:cols], True, HI_ON if "**" in line else PROTO_FG), (r.x, y))
+            y += lh
         pygame.draw.line(s, FAINT, (r.x, y), (r.right, y))
         y += 4
 

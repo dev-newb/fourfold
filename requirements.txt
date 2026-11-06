@@ -1,4 +1,5 @@
 pygame>=2.5
 httpx>=0.27
 anthropic>=2.4
-pillow>=10   # only for port_mode = "pixels"
+pillow>=10.1 # port_mode = "pixels" and the jigsaw task
+# matplotlib  # optional: sweep.py draws its plot with it

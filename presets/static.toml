@@ -1,0 +1,10 @@
+# a bad line: about one bit in 300 flips in transit, and every wire has its own
+# delay of 0-2 extra ticks. exact echoes stop being exact and replies arrive late
+# and out of step. watch for error correction (repetition, checksums, parity)
+# being invented, and for latency being measured.
+base = "../config.toml"
+ticks = 80
+
+[world]
+noise = 0.003
+latency = [0, 2]

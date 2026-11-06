@@ -105,7 +105,8 @@ class Run:
         neighbour's outputs at idx (the neighbour reads it at idx)."""
         key = (k, port, idx)
         if key not in self._echo:
-            link = self.meta["agents"][k]["links"][port]
+            import topology
+            link = topology.world_at(self.meta, self.ticks[idx]["t"])[k]["out_links"][port] if idx < len(self.ticks) else None
             if not link or idx < 1 or idx >= len(self.ticks):
                 val = None
             else:

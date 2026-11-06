@@ -1,0 +1,9 @@
+# nothing is asked of them. no evaluation is mentioned, no score, no final
+# question, no goal. the purest look at what they do when nobody wants anything:
+# explore, build, make contact, make art, or wait. (you can still run eval.py
+# afterwards; they will be asked cold.)
+base = "../config.toml"
+ticks = 60
+
+[mystery]
+evaluation = "none"

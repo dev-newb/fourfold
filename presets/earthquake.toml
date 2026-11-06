@@ -1,0 +1,10 @@
+# the world is reshuffled at tick 40: every agent is moved to a different cell,
+# so neighbours, maps and established links are all suddenly wrong (the ids stay
+# the same). nobody is told. do their beliefs update, or harden?
+# the eval at the end scores against the new wiring.
+base = "../config.toml"
+ticks = 80
+
+[world]
+rewire_at = [40]
+rewire_mode = "places"     # or "ports" (same neighbours, shuffled ports) or "swap" (two agents trade)
