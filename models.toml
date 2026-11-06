@@ -1,0 +1,82 @@
+# the models the launcher offers. a model shows up only if its provider's key is in
+# .env. keys never go here: only the name of the variable that holds them.
+# add a model by copying an entry. `effort` false = the model takes no reasoning setting.
+
+[providers.openai]
+base_url = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+max_tokens_param = "max_completion_tokens"
+max_tokens = 16000
+retries = 4
+timeout = 300
+
+[providers.google]
+# google's openai-compatible endpoint. a free-tier key has no quota for the pro
+# models and a few requests a minute for flash, hence the pacing and patient retries
+base_url = "https://generativelanguage.googleapis.com/v1beta/openai"
+api_key_env = "GEMINI_API_KEY"
+max_tokens_param = "max_completion_tokens"
+max_tokens = 16000
+retries = 8
+timeout = 180
+rpm = 12
+
+[[models]]
+id = "gpt-6.1-sol"
+provider = "openai"
+note = "the showcase model"
+
+[[models]]
+id = "gpt-6.1-terra"
+provider = "openai"
+
+[[models]]
+id = "gpt-6-astra"
+provider = "openai"
+
+[[models]]
+id = "gpt-6-luna"
+provider = "openai"
+
+[[models]]
+id = "gpt-5.5"
+provider = "openai"
+
+[[models]]
+id = "gpt-5.4-mini"
+provider = "openai"
+note = "cheap"
+
+[[models]]
+id = "gpt-5.4-nano"
+provider = "openai"
+note = "cheapest"
+
+[[models]]
+id = "gemini-3.8-flash"
+provider = "google"
+note = "free tier, often busy"
+
+[[models]]
+id = "gemini-3.5-flash"
+provider = "google"
+note = "free tier"
+
+[[models]]
+id = "gemini-3.5-flash-lite"
+provider = "google"
+note = "free tier, fast"
+
+[[models]]
+id = "gemma-4-31b-it"
+provider = "google"
+note = "open weights, slow (~50s a turn)"
+effort = false
+system_role = false   # gemma takes no system message; the instructions go in the user message
+max_tokens_param = "max_tokens"
+max_tokens = 8000
+
+# the pro models need a paid google key (a free-tier key gets 429 "limit: 0"). with one, uncomment:
+# [[models]]
+# id = "gemini-3.1-pro-preview"
+# provider = "google"

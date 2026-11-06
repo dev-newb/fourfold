@@ -92,6 +92,12 @@ the pattern across all of these is pretty consistent. someone eventually echoes 
 
 ## more ways to break the world (this fork)
 
+### the launcher
+
+the easy way in: **`python launcher.py`** (or `python make_app.py` once, to get a `Fourfold.app` in `~/Applications`). pick an experiment on the left, up to four models on the right (click a name to cycle through them, click the effort to change it), and who sits where in the grid (click a cell, or use mix / rows / columns / random). hit launch and the live viewer opens. the runs list at the bottom can watch, stop, report on or evaluate any run, and "free test" runs the same thing with the echo agents at no cost.
+
+the models on offer come from `models.toml`, filtered to the providers whose key is in `.env` (`OPENAI_API_KEY`, `GEMINI_API_KEY`). google models go through google's openai-compatible endpoint, paced and patient enough for a free-tier key. in a mixed grid each tile in the viewer is labelled and coloured by its model.
+
 everything below is a switch in the config (see `config.example.toml`, which documents every one), and every switch is off by default. each idea also has a ready-made preset in `presets/` that builds on your `config.toml`, so once your model is set up there:
 
 ```
@@ -159,6 +165,9 @@ metrics.py          contact, text adoption, lever and turnover measures, all fro
 view.py, render.py  the pygame viewer. render.py is swappable (an led panel renderer is the plan)
 runlog.py           reads and tails ticks.jsonl
 eval.py             final questions and scoring
+launcher.py         point-and-click: experiment, up to four models, who sits where, launch
+models.toml         the models the launcher offers (env var names only, never keys)
+make_app.py         builds Fourfold.app around launcher.py
 sweep.py            settings x seeds -> csv and plot
 generations.py      lineages of runs that inherit protocols
 presets/            ready-made experiments

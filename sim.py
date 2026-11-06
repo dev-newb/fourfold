@@ -87,7 +87,8 @@ DEFAULTS = {
     },
     "mix": {
         "backends": [],             # names of [backends.*] tables, handed out to the agents
-        "assign": "round_robin",    # round_robin | random | blocks (contiguous runs, row by row)
+        "assign": "round_robin",    # round_robin | random | blocks (contiguous runs, row by row) | cells
+        "cells": [],                # assign = "cells": a backend name per cell, row by row
     },
     "backends": {},                 # [backends.name]: kind = "llm"|"anthropic"|"echo" plus overrides
     "cost": {
@@ -594,6 +595,8 @@ def parse_response(raw: str, prev_outputs, prev_protocol: str, word_limit: int,
     text_raw = raw or ""
     if "</think>" in text_raw:                 # reasoning models that leak their scratchpad
         text_raw = text_raw.rsplit("</think>", 1)[1]
+    if "</thought>" in text_raw:               # gemma's version of the same
+        text_raw = text_raw.rsplit("</thought>", 1)[1]
     out = list(prev_outputs)
     missing = 0
     for i in range(4):
@@ -789,6 +792,29 @@ class LLMAgent:
         self.headers = {"Authorization": f"Bearer {key}"}
         self.client = httpx.AsyncClient(timeout=float(cfg["timeout"]))
         self.sem = asyncio.Semaphore(int(cfg["max_concurrency"]))
+        self.rpm = float(cfg.get("rpm") or 0)   # free-tier keys: space requests out to this many a minute
+        self._next = 0.0
+        self._pace_lock = asyncio.Lock()
+
+    async def pace(self):
+        if not self.rpm:
+            return
+        async with self._pace_lock:
+            now = time.monotonic()
+            if self._next > now:
+                await asyncio.sleep(self._next - now)
+            self._next = max(now, self._next) + 60.0 / self.rpm
+
+    @staticmethod
+    def retry_delay(e: Exception, attempt: int) -> float:
+        """how long to wait before trying again. rate limits and overloads get the
+        server's own hint (retry-after, google's "retry in 23s") or a longer backoff."""
+        if isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (429, 503):
+            ra = e.response.headers.get("retry-after")
+            m = re.search(r"retry in ([\d.]+)s|\"retryDelay\":\s*\"([\d.]+)s", e.response.text)
+            hint = float(ra) if ra and ra.replace(".", "").isdigit() else (float(m.group(1) or m.group(2)) if m else 0)
+            return min(90.0, max(hint + 1, 5 * 2 ** attempt))
+        return min(30, 2 ** attempt)
 
     @staticmethod
     def content(turn: Turn):
@@ -802,13 +828,21 @@ class LLMAgent:
                 "url": "data:image/png;base64," + base64.b64encode(data).decode(), "detail": "low"}})
         return parts
 
+    def messages(self, turn: Turn) -> list:
+        if self.cfg.get("system_role", True):
+            return [{"role": "system", "content": turn.system},
+                    {"role": "user", "content": self.content(turn)}]
+        # models with no system role (gemma): the instructions go first in the user message
+        c = self.content(turn)
+        head = turn.system + "\n\n---\n\n"
+        if isinstance(c, str):
+            return [{"role": "user", "content": head + c}]
+        return [{"role": "user", "content": [{"type": "text", "text": head}] + c}]
+
     async def act(self, turn: Turn) -> Reply:
         body = {
             "model": self.cfg["model"],
-            "messages": [
-                {"role": "system", "content": turn.system},
-                {"role": "user", "content": self.content(turn)},
-            ],
+            "messages": self.messages(turn),
             # newer openai models want max_completion_tokens; vllm and most others take max_tokens
             self.cfg.get("max_tokens_param") or "max_tokens": self.cfg["max_tokens"],
             **(self.cfg.get("extra_body") or {}),
@@ -819,6 +853,7 @@ class LLMAgent:
         async with self.sem:
             for attempt in range(int(self.cfg["retries"]) + 1):
                 try:
+                    await self.pace()
                     r = await self.client.post(self.url, json=body, headers=self.headers)
                     r.raise_for_status()
                     data = r.json()
@@ -833,7 +868,10 @@ class LLMAgent:
                     if isinstance(e, httpx.HTTPStatusError):
                         detail = " " + e.response.text[:300]
                     last = f"{type(e).__name__}: {e}{detail}"
-                    await asyncio.sleep(min(30, 2 ** attempt))
+                    if isinstance(e, httpx.HTTPStatusError) and e.response.status_code in (400, 401, 403, 404, 422):
+                        break   # the request itself is wrong; asking again won't help
+                    if attempt < int(self.cfg["retries"]):
+                        await asyncio.sleep(self.retry_delay(e, attempt))
         return Reply(error=f"llm request failed after retries: {last}")
 
     async def close(self):
@@ -935,7 +973,10 @@ def backend_cfg(cfg: dict, name: str | None) -> tuple[str, dict]:
     if not b:
         sys.exit(f"config: mix.backends names {name!r}, but there is no [backends.{name}] table")
     kind = b.pop("kind", "llm")
-    return kind, deep_merge(cfg.get(kind) or {}, b)
+    # inherit = false: start from the built-in defaults, not this config's [llm]/[anthropic]
+    # table (the launcher writes complete backends, and e.g. gemma rejects a reasoning_effort)
+    base = (cfg.get(kind) or {}) if b.pop("inherit", True) else DEFAULTS.get(kind, {})
+    return kind, deep_merge(base, b)
 
 
 def make_agent(cfg: dict, name: str | None = None):
@@ -960,6 +1001,9 @@ def assign_controllers(cfg: dict, agents: list[dict], world_seed):
     if names:
         if mode == "random":
             picks = [rng.choice(names) for _ in range(n)]
+        elif mode == "cells":                  # one name per cell, row by row ("" = the default agent)
+            cells = list((cfg.get("mix") or {}).get("cells") or [])
+            picks = [(cells[k] if k < len(cells) else "") or None for k in range(n)]
         elif mode == "blocks":
             picks = [names[k * len(names) // n] for k in range(n)]
         else:

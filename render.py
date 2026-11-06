@@ -32,6 +32,7 @@ DEAD = (70, 70, 70)
 HI_ON = (255, 176, 48)    # debug: bit turned on this tick
 HI_OFF = (120, 42, 30)    # debug: bit turned off this tick
 ERR = (215, 95, 95)
+MODEL_COLORS = [(90, 200, 255), (255, 150, 60), (225, 100, 225), (120, 225, 130)]  # slot 1-4 in the launcher
 
 MONO = "consolas,dejavusansmono,menlo,cascadiamono,couriernew,monospace"
 
@@ -55,6 +56,7 @@ class TileView:
     score: int | None = None          # naming task: this tick's score
     score_max: int | None = None      # naming task: live ports, the most this agent can score
     extra: list = field(default_factory=list)   # task / energy / lever lines under the header
+    accent: tuple | None = None       # mixed-model runs: the model's colour
 
 
 class TileRenderer:
@@ -73,6 +75,10 @@ def wrap_block(text: str, cols: int) -> list[str]:
     for para in text.expandtabs(2).splitlines() or [""]:
         out.extend(textwrap.wrap(para, cols, break_long_words=True, drop_whitespace=True) or [""])
     return out
+
+
+def pad_accent(r) -> int:
+    return 7
 
 
 class ScreenRenderer(TileRenderer):
@@ -263,8 +269,10 @@ class ScreenRenderer(TileRenderer):
         cols = max(8, r.w // cw)
         y = r.y
 
-        lab = bold.render(tile.label, True, FG)
+        lab = bold.render(tile.label, True, tile.accent or FG)
         s.blit(lab, (r.x, y))
+        if tile.accent:
+            pygame.draw.rect(s, tile.accent, pygame.Rect(r.x - pad_accent(r), r.y, 3, lh))
         tk = font.render(f"tick {tile.tick}", True, DIM)
         s.blit(tk, (r.right - tk.get_width(), y))
         sd = font.render(f"seed {tile.seed}", True, DIM)

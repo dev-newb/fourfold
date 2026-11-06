@@ -17,7 +17,7 @@ import sys
 import pygame
 
 import topology
-from render import SIDES, ScreenRenderer, TileView
+from render import MODEL_COLORS, SIDES, ScreenRenderer, TileView
 from runlog import Run, resolve
 from tasks import make_task
 
@@ -104,7 +104,14 @@ class App:
                 extra += task.view_lines(k, ag)
             except Exception:
                 pass
+        accent = None
+        names = list((meta["config"].get("mix") or {}).get("backends") or [])
+        b = c.get("backend")
+        if b and not c.get("impostor"):
+            idx = int(b[4:]) - 1 if b.startswith("slot") and b[4:].isdigit() else (names.index(b) if b in names else 0)
+            accent = MODEL_COLORS[idx % len(MODEL_COLORS)]
         return TileView(
+            accent=accent,
             label=label, seed=ag.get("seed", a["seed"]), tick=rec["t"],
             sides=sides, side_ports=side_ports, prev_sides=prev_sides, echo=echo,
             inputs=inputs, prev_inputs=prev_inputs,
